@@ -27,6 +27,7 @@ bool alarm = false;
 void alarm_turn_on() {
     alarm = true;
     buzzer_set(true);
+    mqtt_client_publish("/alarm/state", get_state(alarm));
 }
 
 void init() {
@@ -78,6 +79,7 @@ void mqtt_request_handler(const char* topic, const char* data) {
     if (strstr(topic, "alarm") != NULL) {
         alarm = false;
         buzzer_set(false);
+        mqtt_client_publish("/alarm/state", get_state(alarm));
         return;
     }
 };
