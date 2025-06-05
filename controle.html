@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Controle Residencial</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #eef1f4;
+    margin: 0;
+    padding: 20px;
+    color: #333;
+  }
+
+  h1 {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 20px;
+  }
+
+  .pnl {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+
+  .pnl h2 {
+    margin-top: 0;
+    color: #007BFF;
+    font-size: 20px;
+  }
+
+  .light {
+    margin-bottom: 30px;
+    font-size: 25px;
+  }
+
+  .status { font-weight: bold; }
+
+  .on { color: green !important; }
+
+  .off { color: red; }
+
+  .btn {
+    padding: 12px 15px;
+    margin-left: 5px;
+    font-size: 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #007BFF;
+    color: white;
+  }
+
+  .btn-temp { width: 80px; height: 70px; font-size: 45px; line-height: 35px; }
+
+  .lfr { float: right; width: 110px; }
+
+  .di { display: inline; }
+
+  .btn:hover { background-color: #0056b3; }
+
+  .temp {
+    font-size: 24px;
+    margin: 15px 0;
+    color: #555;
+  }
+
+  .btn-alarm { background-color: #dc3545; }
+
+  .btn-alarm:hover { background-color: #a71d2a; }
+
+  .alarm {
+    font-weight: bold;
+    font-size: 18px;
+  }
+
+  .d-none { display: none; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+</head>
+<body>
+  <h1>Painel Residencial</h1>
+  <div class="container">
+    <div class="pnl">
+      <h2>Luzes</h2>
+      <div class="light">
+        Entrada: <span class="status off"></span>
+        <button class="btn lfr" onclick="send('/lights/entrance','')"></button>
+      </div>
+      <div class="light">
+        Sala: <span class="status off"></span>
+        <button class="btn lfr" onclick="send('/lights/room','')"></button>
+      </div>
+      <div class="light">
+        Cozinha: <span class="status off"></span>
+        <button class="btn lfr" onclick="send('/lights/kitchen','')"></button>
+      </div>
+      <div class="light">
+        Quarto: <span class="status off"></span>
+        <button class="btn lfr" onclick="send('/lights/bedroom','')"></button>
+      </div>
+    </div>
+    <div class="pnl">
+      <h2>Aquecedor</h2>
+      <div class="temp">Temperatura: <strong></strong>°C</div>
+      <center><input type="range" min="15" max="35" onchange="send('/temperature', this.value)"></center>
+    </div>
+    <div class="pnl">
+      <h2>Alarme</h2>
+      <div class="alarm off" id="alarm"></div>
+      <br>
+      <center class="d-none"><button class="btn btn-alarm di" onclick="send('/alarm','')">Desativar alarme</button></center>
+    </div>
+  </div>
+
+  <script>
+	var host = '192.168.0.100';
+	var port = 8080;
+	var userName = 'ronaldo';
+	var password = 'ronaldo';
+    var client = new Paho.MQTT.Client(host, port, 'browserId');
+    client.onConnectionLost = onConnectionLost;
+    client.onMessageArrived = onMessageArrived;
+    
+    willMessage = new Paho.MQTT.Message('Off');
+    willMessage.destinationName = '/webpage'
+    client.connect({userName, password, willMessage, onSuccess, onFailure});
+    
+    function onSuccess() {
+	  console.log('Conectado');
+      client.subscribe('/lights/+/state');
+	  client.subscribe('/temperature/state');
+	  client.subscribe('/alarm/state');
+      send('/webpage', 'On');
+    }
+    
+    function onFailure(a) {
+	  window.location.reload();
+    }
+
+    function onConnectionLost(responseObject) {
+      if (responseObject.errorCode !== 0) {
+        console.log('onConnectionLost:' + responseObject.errorMessage);
+      }
+    }
+    
+    function onMessageArrived(message) {
+      console.log('topic = ' + message.destinationName);
+      console.log('data = ' + message.payloadString);
+      var isOn = message.payloadString.includes('On');
+      if (message.destinationName.includes('bedroom')) setLight(3, isOn);
+      else if (message.destinationName.includes('kitchen')) setLight(2, isOn);
+      else if (message.destinationName.includes('room')) setLight(1, isOn);
+      else if (message.destinationName.includes('entrance')) setLight(0, isOn);
+	  else if (message.destinationName.includes('temperature')) {
+	    document.querySelectorAll('input')[0].value = message.payloadString;
+		document.querySelectorAll('strong')[0].textContent = message.payloadString;
+	  } else if (message.destinationName.includes('alarm')) {
+	    document.querySelector('#alarm').textContent = isOn ? 'Alarme Ativo' : 'Sem alarme';
+		if (isOn) {
+		  document.querySelector('#alarm').classList.remove('on');
+		  document.querySelectorAll('center')[1].classList.remove('d-none');
+		} else {
+		  document.querySelector('#alarm').classList.add('on');
+		  document.querySelectorAll('center')[1].classList.add('d-none');
+		}
+	  }
+    }
+    
+    function setLight(index, isOn) {
+      document.querySelectorAll('button')[index].textContent = isOn ? 'Desligar' : 'Ligar';
+      document.querySelectorAll('span')[index].textContent = isOn ? 'Acesa' : 'Apagada';
+      if (isOn) document.querySelectorAll('span')[index].classList.add('on');
+      else document.querySelectorAll('span')[index].classList.remove('on');
+    }
+    
+    function send(topic, payload){
+      message = new Paho.MQTT.Message(payload);
+      message.destinationName = topic;
+      client.send(message);
+    }
+  </script>
+</body>
+</html>
