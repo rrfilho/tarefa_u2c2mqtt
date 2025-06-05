@@ -17,17 +17,19 @@
 #define MQTT_USERNAME "ronaldo"
 #define MQTT_PASSWORD "ronaldo"
 
-bool entrance_light = false;
-bool room_light = false;
-bool kitchen_light = false;
-bool bedroom_light = false;
-unsigned int temperature = 20;
-bool alarm = false;
+bool _entrance_light = false;
+bool _room_light = false;
+bool _kitchen_light = false;
+bool _bedroom_light = false;
+unsigned int _temperature = 20;
+bool _alarm = false;
+
+char* get_state(bool status);
 
 void alarm_turn_on() {
-    alarm = true;
+    _alarm = true;
     buzzer_set(true);
-    mqtt_client_publish("/alarm/state", get_state(alarm));
+    mqtt_client_publish("/alarm/state", get_state(_alarm));
 }
 
 void init() {
@@ -44,42 +46,49 @@ char* get_state(bool status) {
     return status ? "On" : "Off";
 }
 
+char* to_string(int value) {
+    static char value_str[5];
+    itoa(value, value_str, 10);
+    return value_str;
+}
+
 void mqtt_request_handler(const char* topic, const char* data) {
     if (strstr(topic, "/lights/entrance") != NULL) {
-        entrance_light = !entrance_light;
-        led_matrix_lights(entrance_light, room_light, kitchen_light, bedroom_light);
-        mqtt_client_publish("/lights/entrance/state", get_state(entrance_light));
+        _entrance_light = !_entrance_light;
+        led_matrix_lights(_entrance_light, _room_light, _kitchen_light, _bedroom_light);
+        mqtt_client_publish("/lights/entrance/state", get_state(_entrance_light));
         return;
     }
     if (strstr(topic, "/lights/bedroom") != NULL) {
-        bedroom_light = !bedroom_light;
-        led_matrix_lights(entrance_light, room_light, kitchen_light, bedroom_light);
-        mqtt_client_publish("/lights/bedroom/state", get_state(bedroom_light));
+        _bedroom_light = !_bedroom_light;
+        led_matrix_lights(_entrance_light, _room_light, _kitchen_light, _bedroom_light);
+        mqtt_client_publish("/lights/bedroom/state", get_state(_bedroom_light));
         return;
     }
     if (strstr(topic, "/lights/room") != NULL) {
-        room_light = !room_light;
-        led_matrix_lights(entrance_light, room_light, kitchen_light, bedroom_light);
-        mqtt_client_publish("/lights/room/state", get_state(room_light));
+        _room_light = !_room_light;
+        led_matrix_lights(_entrance_light, _room_light, _kitchen_light, _bedroom_light);
+        mqtt_client_publish("/lights/room/state", get_state(_room_light));
         return;
     }
     if (strstr(topic, "/lights/kitchen") != NULL) {
-        kitchen_light = !kitchen_light;
-        led_matrix_lights(entrance_light, room_light, kitchen_light, bedroom_light);
-        mqtt_client_publish("/lights/kitchen/state", get_state(kitchen_light));
+        _kitchen_light = !_kitchen_light;
+        led_matrix_lights(_entrance_light, _room_light, _kitchen_light, _bedroom_light);
+        mqtt_client_publish("/lights/kitchen/state", get_state(_kitchen_light));
         return;
     }
     if (strstr(topic, "/temperature") != NULL) {
-        int temperature = atoi(data);
-        if (temperature > 35)  temperature = 35;
-        if (temperature < 15)  temperature = 15;
-        leds_set_red(temperature);
+        _temperature = atoi(data);
+        if (_temperature > 35)  _temperature = 35;
+        if (_temperature < 15)  _temperature = 15;
+        leds_set_red(_temperature);
+        mqtt_client_publish("/temperature/state", to_string(_temperature));
         return;
     }
-    if (strstr(topic, "alarm") != NULL) {
-        alarm = false;
+    if (strstr(topic, "/alarm") != NULL) {
+        _alarm = false;
         buzzer_set(false);
-        mqtt_client_publish("/alarm/state", get_state(alarm));
+        mqtt_client_publish("/alarm/state", get_state(_alarm));
         return;
     }
 };
@@ -102,12 +111,20 @@ int main() {
     display_set_message(wifi_ip());
     
     mqtt_client_init(MQTT_SERVER, MQTT_USERNAME, MQTT_PASSWORD, false, mqtt_request_handler);
+    mqtt_client_publish("/lights/entrance/state", get_state(_entrance_light));
+    mqtt_client_publish("/lights/room/state", get_state(_room_light));
+    mqtt_client_publish("/lights/kitchen/state", get_state(_kitchen_light));
+    mqtt_client_publish("/lights/bedroom/state", get_state(_bedroom_light));
+    mqtt_client_publish("/temperature/state", to_string(_temperature));
+    mqtt_client_publish("/alarm/state", get_state(_alarm));
     mqtt_client_subscribe("/lights/+");
     mqtt_client_subscribe("/temperature");
     mqtt_client_subscribe("/alarm");
 
-    while (mqtt_is_active()) 
+    while (mqtt_is_active()) {
         wifi_keep_active();
+        sleep_ms(5000);
+    }
     wifi_deinit();
     return 0;
 }

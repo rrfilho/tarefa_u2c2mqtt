@@ -6,7 +6,7 @@
 #define CLOCK_DIVIDER 2.0
 #define WRAP 22
 #define INITIAL 6
-#define SHIFT 14
+#define SHIFT 15
 
 void leds_init() {
     gpio_set_function(RED_PWM_LED, GPIO_FUNC_PWM);
@@ -16,7 +16,6 @@ void leds_init() {
     pwm_set_gpio_level(RED_PWM_LED, INITIAL);
     pwm_set_enabled(slice, true);
 }
-
 
 void leds_set_red(unsigned int temperature) {
     pwm_set_gpio_level(RED_PWM_LED, temperature - SHIFT);

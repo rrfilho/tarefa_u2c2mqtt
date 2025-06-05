@@ -22,7 +22,7 @@
 #endif // MQTT_CERT_INC
 
 // This defaults to 4
-#define MQTT_REQ_MAX_IN_FLIGHT 5 // alterar para aumentar a quantidade de tópicos do MQTT
+#define MQTT_REQ_MAX_IN_FLIGHT 10 // alterar para aumentar a quantidade de tópicos do MQTT
 
 
 

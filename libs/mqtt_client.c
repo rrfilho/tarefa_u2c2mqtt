@@ -24,7 +24,6 @@ typedef struct {
 } mqtt_client;
 
 #define MQTT_KEEP_ALIVE_SECONDS 60
-#define TEMP_WORKER_TIME_S 10
 
 // QoS - mqtt_subscribe: At most once (QoS 0); At least once (QoS 1); Exactly once (QoS 2);
 #define MQTT_SUBSCRIBE_QOS 1
